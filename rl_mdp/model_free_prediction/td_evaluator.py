@@ -7,7 +7,7 @@ from rl_mdp.policy.abstract_policy import AbstractPolicy
 class TDEvaluator(AbstractEvaluator):
     def __init__(self,
                  env: AbstractMDP,
-                 alpha: float):
+                 alpha: float = 0.1):
         """
         Initializes the TD(0) Evaluator.
 
@@ -38,4 +38,23 @@ class TDEvaluator(AbstractEvaluator):
         Runs a single episode using the TD(0) method to update the value function.
         :param policy: A policy object that provides action probabilities for each state.
         """
-        pass
+        state = self.env.reset()
+        done = False
+        while not done:
+            # Sample an action
+            action = policy.sample_action(state)
+
+            # Take the action
+            next_state, reward, done = self.env.step(action)
+
+            # Calculate delta
+            delta = reward + self.env.discount_factor * self.value_fun[next_state] - self.value_fun[state]
+
+            # Re-evaluation of the value function
+            self.value_fun[state] = (
+                self.value_fun[state] + self.alpha * delta
+                ).round(2)
+
+            # Moving to the next state
+            state = next_state
+
