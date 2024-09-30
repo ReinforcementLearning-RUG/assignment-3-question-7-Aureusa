@@ -4,82 +4,45 @@ from rl_mdp.mdp.mdp import MDP
 from rl_mdp.model_free_prediction.monte_carlo_evaluator import MCEvaluator
 from rl_mdp.policy.policy import Policy
 from rl_mdp.model_free_prediction.td_evaluator import TDEvaluator
+from rl_mdp.model_free_prediction.td_lambda_evaluator import TDLambdaEvaluator
+from rl_mdp.util import create_mdp, create_policy_1, create_policy_2
 
-import numpy as np
+def compare_polcies(policy1_eval, policy2_eval, Algorithm):
+    differences = policy1_eval - policy2_eval
+    count = 0
 
-def creating_the_mdp():
-    """
-    Function that creates the mdp
-    """
-    states = [0, 1, 2, 3]    # Set of states actions represented as a list of integers.
-    actions = [0, 1]
-
-    # Define rewards using a dictionary
-    rewards = {
-        (0, 0): 0.0,           # state 0, action 0 gets reward -1.
-        (0, 1): 0.0,
-        (1, 0): 5.0,
-        (1, 1): -1.0,
-        (2, 0): -1.0,
-        (2, 1): 10.0
-    }
-
-    # Create the RewardFunction object
-    reward_function = RewardFunction(rewards)
-
-    # Define transition probabilities using a dictionary
-    transitions = {
-        (0, 0): np.array([0, 0, 1, 0]),      # For state one, action one we get probability vector (0.7, 0.2, 0.1) representing the probability to transition to state 0, 1, 2 respectively.
-        (0, 1): np.array([0, 0.8, 0.2, 0]),
-        (1, 0): np.array([0, 0, 0.5, 0.5]),
-        (1, 1): np.array([0, 1, 0, 0]),
-        (2, 0): np.array([0, 0, 0, 1]),
-        (2, 1): np.array([0, 0, 1, 0])
-    }
-
-    # Create the TransitionFunction object
-    transition_function = TransitionFunction(transitions)
-
-    # Create the MDP object
-    mdp = MDP(states, actions, transition_function, reward_function, discount_factor=0.9, terminal_state = 3)
+    for diff in differences:
+        count += diff
+            
+    if count < 0:
+        result = ("Policy 2 is better than Policy 1 (π2 > π1) for\n"
+                  f"the {Algorithm} algorithm.")
+    elif count > 0:
+        result = ("Policy 1 is better than Policy 2 (π1 > π2) for\n"
+                  f"the {Algorithm} algorithm.")
+    else:
+        result = ("It cannot be concluded which policy is better\n"
+                  "as the inequality v_π1(s)>=v_π2(s) does not hold for every s in S!")
     
-    return mdp
-
-
-def policy_1():
-    """
-    Setting policy 1
-    """
-    policy = Policy()
-    policy.set_action_probabilities(0, [0.7, 0.3])
-    policy.set_action_probabilities(1, [0.6, 0.4])
-    policy.set_action_probabilities(2, [0.9, 0.1])
-    return policy
-
-def policy_2():
-    """
-    Setting policy 2
-    """
-    policy = Policy()
-    policy.set_action_probabilities(0, [0.5, 0.5])
-    policy.set_action_probabilities(1, [0.3, 0.7])
-    policy.set_action_probabilities(2, [0.8, 0.2])
-    return policy
+    return result
 
 def simple_print(Evaluation, policy_name, Evaluator):
+    upper = f"[---------------------------{Evaluator}---------------------------]"
+    lower = "-" * (len(upper)-2)
+    print(upper)
     print(f"The estimates for the state value function for {policy_name} using {Evaluator} are: ")
     for count, i in enumerate(Evaluation):
         print(f"V(s{count}) = {i}")
+    print(f"[{lower}]")
     
-
 def main() -> None:
     """
     Starting point of the program, you can instantiate any classes, run methods/functions here as needed.
     """
-    mdp = creating_the_mdp()
+    mdp = create_mdp()
 
-    policy1 = policy_1()
-    policy2 = policy_2()
+    policy1 = create_policy_1()
+    policy2 = create_policy_2()
 
     Evaluator_p1 = MCEvaluator(mdp)\
         .evaluate(policy1, 1000)
@@ -87,8 +50,11 @@ def main() -> None:
     Evaluator_p2 = MCEvaluator(mdp)\
         .evaluate(policy2, 1000)
     
+    MC_comparison = compare_polcies(Evaluator_p1, Evaluator_p2, "MC first-visit")
+    
     simple_print(Evaluator_p1, "Policy 1", "MC first-visit")
     simple_print(Evaluator_p2, "Policy 2", "MC first-visit")
+    print(MC_comparison)
 
     TD_evaluator_p1 = TDEvaluator(mdp)\
         .evaluate(policy1, 1000)
@@ -96,8 +62,23 @@ def main() -> None:
     TD_evaluator_p2 = TDEvaluator(mdp)\
         .evaluate(policy2, 1000)
     
+    TD_comparison = compare_polcies(TD_evaluator_p1, TD_evaluator_p2, "TD(0)")
+    
     simple_print(TD_evaluator_p1, "Policy 1", "TD(0)")
     simple_print(TD_evaluator_p2, "Policy 2", "TD(0)")
+    print(TD_comparison)
+
+    TD_lambda_p1 = TDLambdaEvaluator(mdp)\
+        .evaluate(policy1, 1000)
+    
+    TD_lambda_p2 = TDLambdaEvaluator(mdp)\
+        .evaluate(policy2, 1000)
+    
+    TD_lambda_comparison = compare_polcies(TD_lambda_p1, TD_lambda_p2, "TD(lambda)")
+    
+    simple_print(TD_lambda_p1, "Policy 1", "TD(lambda)")
+    simple_print(TD_lambda_p2, "Policy 2", "TD(lambda)")
+    print(TD_lambda_comparison)
 
 if __name__ == "__main__":
     main()

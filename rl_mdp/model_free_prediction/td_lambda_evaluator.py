@@ -7,8 +7,8 @@ from rl_mdp.policy.abstract_policy import AbstractPolicy
 class TDLambdaEvaluator(AbstractEvaluator):
     def __init__(self,
                  env: AbstractMDP,
-                 alpha: float,
-                 lambd: float):
+                 alpha: float = 0.1,
+                 lambd: float = 0.5):
         """
         Initializes the TD(λ) Evaluator.
 
@@ -43,4 +43,29 @@ class TDLambdaEvaluator(AbstractEvaluator):
 
         :param policy: A policy object that provides action probabilities for each state.
         """
-        pass
+        state = self.env.reset()
+        done = False
+        self.eligibility_traces = np.zeros(self.env.num_states)
+        while not done:
+            # Sample an action
+            action = policy.sample_action(state)
+
+            # Take the action
+            next_state, reward, done = self.env.step(action)
+
+            # Calculate delta
+            delta = reward + self.env.discount_factor * self.value_fun[next_state] - self.value_fun[state]
+
+            # Update eligibility
+            self.eligibility_traces[state] += 1
+
+            for state in self.env.states:
+                # Re-evaluation of the value function
+                self.value_fun[state] = (
+                    self.value_fun[state] + self.alpha * delta * self.eligibility_traces[state]
+                    ).round(2)
+                
+                self.eligibility_traces[state] *= self.env.discount_factor * self.lambd
+
+            # Moving to the next state
+            state = next_state
